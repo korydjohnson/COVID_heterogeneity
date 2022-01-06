@@ -1,0 +1,236 @@
+---
+title: "Multi-strain Paper Graphs"
+author: "Kory D. Johnson"
+date: 'Last Compiled `r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document:
+    code_folding: show
+    highlight: tango
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+---
+
+```{r setup, include=FALSE, purl=F}
+library(knitr)
+opts_chunk$set(echo = TRUE,
+               collapse = FALSE,
+               comment = "",
+               strip.white = TRUE,
+               warning = FALSE,
+               message = FALSE,
+               out.width = "70%",
+               fig.align = "center")
+# knitr::purl("samples_master.Rmd")
+source("scripts/side_by_side_sample_plots.r")
+```
+
+## Topic
+
+This is a master file to run all simulations and produce corresponding graphs. Samples are put/pulled from the multi-strain/samples folder and plots are put in the multi-strain/plots folder. For simulations, you can optionally set the `nRuns` for number of simulations. See sourced files for other parameters which can be set. By default, it *adds* to the previous runs instead of overwriting; in case of model changes, delete files or change `addToPrevious` (if not running the same number of nRuns, can accidentally mix model runs!).
+
+For simulations, `setting` is one of c("Delta", "Omega1", "Omega2", "DeltaWane", "Omega1Wane", "Omega2Wane). 1 vs 2 is for 1 import per day or 2.
+
+For graphs, `option` is first one of the settings from above, with additional terms for other graphs. In general, `_prevalence` plots the change in Delta prevalence over time and `_rhoV` plots rhoV over time. You can also use `_delay` (but only for Omega1). As only one of these terms is currently allowed, only the forecast graph for `Omega1_delay` is possible. Note that the "delayed" omega is computed in the standard Omega1 simulation (see szenario file).
+
+
+To run the whole file, use CTRL-Shift-k; this will use the following `nRuns` for the paper. There is a script file named `samples_master.r` which can be sourced to run all of the code chunks. To create this file, call `knitr::purl("samples_master.Rmd")`.
+
+```{r}
+# nRuns = 250
+```
+
+# Delta
+
+## Simulations
+
+```{r}
+# nRuns=80
+setting = "Delta"
+source("scripts/samples_get.R")
+```
+
+## Graphs
+
+```{r}
+# Standard side-by-side plot of $R_e$, mitigation, and cases.
+make_plots("Delta")
+
+# Prevalence plot of Delta over time.
+make_plots("Delta_prevalence")
+
+# plot of rhoV over time
+make_plots("Delta_rhoV")
+
+# compare the controllers
+plots_Delta = make_plots("Delta_compare", toReturn=T)
+```
+
+Merging
+```{r}
+# mitigation, high vs low
+captions = c("High case thresholds, 25-150 per 100,000",
+             "Low case thresholds, 25-50 per 100,000")
+mergePlots(plots_Delta$high$mitPlot, plots_Delta$low$mitPlot, captions=captions,
+           fileName = "Delta_Mitigation.eps")
+
+# infections/quarantine; for 25-150
+mergePlots(plots_Delta$high$infPlot, plots_Delta$high$quarantinePlot,
+           fileName = "Delta_compare_150.eps")
+# infections/quarantine; for 25-50
+mergePlots(plots_Delta$low$infPlot, plots_Delta$low$quarantinePlot,
+           fileName = "Delta_compare_50.eps")
+```
+
+
+# Omega
+
+I renamed Omega2 to Omega2old and split Omega1 into two, where Omega1 is the non-delayed stuff while Omega2 is the delayed stuff so I can run things more easily. Didn't push though, but so that you know for plotting later.
+
+## Simulations
+
+```{r}
+setting = "Omega1"
+source("scripts/samples_get.R")
+
+setting = "Omega2"
+source("scripts/samples_get.R")
+```
+
+## Graphs
+
+```{r}
+# Standard side-by-side plot of $R_e$, mitigation, and cases.
+make_plots("Omega1")
+# make_plots("Omega1_delay")
+make_plots("Omega2_delay")  # Omega1_delay
+
+# plot of rhoV over time
+make_plots("Omega1_rhoV")
+# make_plots("Omega1_delay_rhoV")
+make_plots("Omega2_delay_rhoV")
+
+# compare the controllers
+plots_Omega1 = make_plots("Omega1_compare", toReturn=T)
+# plots_Omega1_delay = make_plots("Omega1_delay_compare", toReturn=T)
+plots_Omega2_delay = make_plots("Omega2_delay_compare", toReturn=T)
+```
+
+Merging
+```{r}
+# mitigation plot
+captions = c("7-day observation delay",
+             "21-day observation delay")
+mergePlots(plots_Omega1$high$mitPlot, plots_Omega2_delay$high$mitPlot, 
+           captions=captions, fileName = "Omega_delay_Mitigation_150.eps")
+mergePlots(plots_Omega1$low$mitPlot, plots_Omega2_delay$low$mitPlot, 
+           captions=captions, fileName = "Omega_delay_Mitigation_50.eps")
+
+# infections/quarantine; for 25-150
+mergePlots(plots_Omega1$low$infPlot, plots_Omega1$low$quarantinePlot,
+           fileName = "Omega1_compare_50.eps")
+# infections/quarantine; for 25-50
+mergePlots(plots_Omega2_delay$low$infPlot, plots_Omega2_delay$low$quarantinePlot,
+           fileName = "Omega2_delay_compare_50.eps")
+
+mergePlots(plots_Omega1[[1]]$infPlot, plots_Omega2_delay[[1]]$infPlot, 
+           captions=captions, fileName = "Omega_delay_Infections.eps")
+mergePlots(plots_Omega1[[1]]$quarantinePlot, plots_Omega2_delay[[1]]$quarantinePlot,
+           captions=captions, fileName = "Omega_delay_Quarantine.eps")
+```
+
+# Waning, no Boosting
+
+## Simulations
+
+Note, these take roughly 8 to 15 min total.
+
+```{r}
+setting = "DeltaWane"
+source("scripts/samples_get.R")
+
+setting = "Omega1Wane"
+source("scripts/samples_get.R")
+```
+
+## Graphs
+
+```{r}
+# Standard side-by-side plot of $R_e$, mitigation, and cases.
+make_plots("DeltaWane")
+make_plots("Omega1Wane")
+
+make_plots("Omega2Wane_delay")  # Omega1_delay
+
+# Prevalence plot of Delta over time.
+make_plots("DeltaWane_prevalence")
+
+# plot of rhoV over time
+make_plots("DeltaWane_rhoV")
+plots_Omega1Wane_rho = make_plots("Omega1Wane_rhoV", toReturn=T)
+
+# compare the controllers
+plots_DeltaWane = make_plots("DeltaWane_compare", toReturn=T)
+plots_Omega1Wane = make_plots("Omega1Wane_compare", toReturn=T)
+```
+
+Merge Plots
+```{r}
+captions = c("High case thresholds, 25-150 per 100,000",
+             "Low case thresholds, 25-50 per 100,000")
+mergePlots(plots_Omega1Wane$high$mitPlot, plots_Omega1Wane$low$mitPlot,
+           captions=captions, fileName = "OmegaWane_Mitigation.eps")
+```
+
+# Waning, with Boosting
+
+## Simulations
+
+Note, these take roughly 13-28 minutes.
+
+```{r}
+setting = "DeltaWaneBooster"
+source("scripts/samples_get.R")
+
+setting = "Omega1WaneBooster"
+source("scripts/samples_get.R")
+```
+
+## Graphs
+
+```{r}
+# Standard side-by-side plot of $R_e$, mitigation, and cases.
+make_plots("DeltaWaneBooster")
+make_plots("Omega1WaneBooster")
+
+# Prevalence plot of Delta over time.
+make_plots("DeltaWaneBooster_prevalence")
+
+# plot of rhoV over time
+make_plots("DeltaWaneBooster_rhoV")
+plots_Omega1WaneBooster_rho = make_plots("Omega1WaneBooster_rhoV", toReturn=T)
+
+# compare the controllers
+plots_DeltaWaneBooster = make_plots("DeltaWaneBooster_compare", toReturn=T)
+plots_Omega1WaneBooster = make_plots("Omega1WaneBooster_compare", toReturn=T)
+```
+
+Merging
+```{r}
+captions = c("Waning without Boosting",
+             "Waning and Boosting")
+mergePlots(plots_Omega1Wane_rho$low[[2]], plots_Omega1WaneBooster_rho$low[[2]], 
+           captions=captions, fileName = "Omega_rho_compare.eps", height=3, keepScale=T)
+plotList = list(plots_Omega1Wane_rho$high[[2]], plots_Omega1WaneBooster_rho$high[[2]])
+
+mergePlots(plots_Omega1[[1]]$mitPlot, plots_Omega2_delay[[1]]$mitPlot, 
+           captions=captions, fileName = "Omega_delay_Mitigation.eps")
+mergePlots(plots_Omega1[[1]]$infPlot, plots_Omega2_delay[[1]]$infPlot, 
+           captions=captions, fileName = "Omega_Infections.eps")
+mergePlots(plots_Omega1[[1]]$quarantinePlot, plots_Omega2_delay[[1]]$quarantinePlot,
+           captions=captions, fileName = "Omega_Quarantine.eps")
+```
+
+# Nu
+
+See "samples_nu.R"
